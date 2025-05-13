@@ -57,8 +57,8 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
         --stack-name api-cognito-demo \
         --capabilities CAPABILITY_NAMED_IAM \
         --parameter-overrides \
-            Lambda1S3Key=lambda1.zip \
-            Lambda2S3Key=lambda2.zip
+        Lambda1S3Key=lambda1.zip \
+        Lambda2S3Key=lambda2.zip
     ```
 3. **Set up environment varialbles for nodejs Lambda function
    OPENWEATHER_API_KEY
