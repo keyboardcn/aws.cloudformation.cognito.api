@@ -44,7 +44,7 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
    ```
    - package dependencies into zip files.
    Please refer [Build Node.js .zip file](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-package.html#nodejs-package-create-dependencies), and [Build Python .zip file](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-dependencies) for creating zip files
-   - zip files
+   - upload zip files with aws console, or aws cli
    ```bash
    aws s3 cp lambda1.zip s3://aws-api-gateway-assessment/lambda1.zip 
    aws s3 cp lambda2.zip s3://aws-api-gateway-assessment/lambda2.zip
@@ -64,32 +64,31 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
    OPENWEATHER_API_KEY=<your_api_key>
 
 4. **Note Outputs**
-- API URL
+- API URL: your_api_url
 - UserPool ID
-- Cognito demain
-- App Client ID/secrets
+- Cognito demain: your_domain_url
+- App Client ID/secrets: your_app_client_id, your_app_client_secret
 
 ### Cognito Setup
 **Sign Up a User**
 - Go to Cognito > User Pools > `ApiGatewayUserPool`
-- Create a test user (with username and temporary password)
+- Create a test user (with test_username and temporary_password)
 
 
 ###  Testing with postman
 1. **Authenticate and Get Token**
 - Postman <your_collection>/<your_request> pane, 
 - go to tab "Authorization", choose Auth Type OAuth 2.0
-- locate "Configure New Token", fill the form (auth/access Token url are defined
-  by UserPoolDomain.Properties.Domain in main.yaml), with the following:
+- locate "Configure New Token", fill the form as following:
     ```code
     Callback URL: http://localhost:8080/
-    Auth URL: https://ca-central-1wn2mizsxo.auth.ca-central-1.amazoncognito.com/oauth2/authorize
-    Access Token URL: https://ca-central-1wn2mizsxo.auth.ca-central-1.amazoncognito.com/oauth2/token
-    Client ID: app client ID
-    Client Secret: app client secret
+    Auth URL: <your_domain_url>/oauth2/authorize
+    Access Token URL: <your_domain_url>/oauth2/token
+    Client ID: <your_app_client_id>
+    Client Secret: <your_app_client_secret>
     ```
- - click "Get New Access Token", after log in
-- note the ID token
+ - after log in with <test_username> and <temporary_password>, click "Get New Access Token"
+ - note the ID token
 
 
 2. **Test API Endpoints**
