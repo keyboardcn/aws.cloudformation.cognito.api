@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS API Gateway with Cognito authentication and two Lambda functions
+
+Parameters:
+  Lambda1S3Key:
+    Type: String
+    Description: S3 Key for Lambda1 (Node.js)
+  Lambda2S3Key:
+    Type: String
+    Description: S3 Key for Lambda2 (Python)
+
+Resources:
+
+  ### Cognito ###
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ApiGatewayUserPool
+      AutoVerifiedAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - profile
+        - email
+      ClientName: APIGatewayAppClient
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      CallbackURLs:
+        - http://localhost:8080/
+      ExplicitAuthFlows:
+        - ALLOW_USER_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  UserPoolDomain: 
+    Type: AWS::Cognito::UserPoolDomain 
+    Properties:
+      UserPoolId: !Ref UserPool 
+      Domain: "ca-central-1wn2mizsxo"
+      ManagedLoginVersion: "1"
+      # CustomDomainConfig: 
+      #   CertificateArn: !Ref CertificateArn
+
+  ### IAM Roles ###
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  ### Lambda Functions ###
+  Lambda1Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: LambdaWeatherFunction
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Code:
+        S3Bucket: aws-api-gateway-assessment
+        S3Key: !Ref Lambda1S3Key
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  Lambda2Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: LambdaCryptoFunction
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      Code:
+        S3Bucket: aws-api-gateway-assessment
+        S3Key: !Ref Lambda2S3Key
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  ### API Gateway ###
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: SecureApi
+
+  WeatherApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: weather
+      RestApiId: !Ref RestApi
+
+  WeatherMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      HttpMethod: GET
+      ResourceId: !Ref WeatherApiResource
+      RestApiId: !Ref RestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Lambda1Function.Arn}/invocations
+
+  CryptoApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: crypto
+      RestApiId: !Ref RestApi
+
+  CryptoMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      HttpMethod: POST
+      ResourceId: !Ref CryptoApiResource
+      RestApiId: !Ref RestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Lambda2Function.Arn}/invocations
+
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoUserPoolAuthorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt UserPool.Arn
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: [WeatherMethod, CryptoMethod]
+    Properties:
+      RestApiId: !Ref RestApi
+      StageName: prod
+
+  LambdaPermission1:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Lambda1Function
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*
+
+  LambdaPermission2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Lambda2Function
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Endpoint"
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/data"
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
