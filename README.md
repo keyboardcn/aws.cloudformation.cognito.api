@@ -31,7 +31,7 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
 
 ### Prerequisites
 - AWS CLI and access credentials
-- S3 bucket to upload Lambda code (replace `aws-api-gateway-assessment`)
+- S3 bucket (name: `aws-api-gateway-assessment`) to upload Lambda code
 
 
 ### Steps
@@ -42,7 +42,7 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
    cd /lambdas/lambda1
    npm install node-fetch
    ```
-   - package dependencies into zip files
+   - package dependencies into zip files.
    Please refer [Build Node.js .zip file](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-package.html#nodejs-package-create-dependencies), and [Build Python .zip file](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-dependencies) for creating zip files
    - zip files
    ```bash
@@ -60,8 +60,8 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
         Lambda1S3Key=lambda1.zip \
         Lambda2S3Key=lambda2.zip
     ```
-3. **Set up environment varialbles for nodejs Lambda function
-   OPENWEATHER_API_KEY
+3. **Set up environment varialbles for nodejs Lambda function**
+   OPENWEATHER_API_KEY=<your_api_key>
 
 4. **Note Outputs**
 - API URL
@@ -78,14 +78,17 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
 ###  Testing with postman
 1. **Authenticate and Get Token**
 - Postman <your_collection>/<your_request> pane, 
-  go to tab "Authorization", choose Auth Type OAuth 2.0
-  locate "Configure New Token", fill the form with the following:
+- go to tab "Authorization", choose Auth Type OAuth 2.0
+- locate "Configure New Token", fill the form (auth/access Token url are defined
+  by UserPoolDomain.Properties.Domain in main.yaml), with the following:
+    ```code
     Callback URL: http://localhost:8080/
     Auth URL: https://ca-central-1wn2mizsxo.auth.ca-central-1.amazoncognito.com/oauth2/authorize
     Access Token URL: https://ca-central-1wn2mizsxo.auth.ca-central-1.amazoncognito.com/oauth2/token
     Client ID: app client ID
     Client Secret: app client secret
-   click "Get New Access Token", after log in
+    ```
+ - click "Get New Access Token", after log in
 - note the ID token
 
 
@@ -115,7 +118,7 @@ and two Lambda functions integrating public APIs (OpenWeather and CoinGecko).
 ### Assumptions and Limitations
 Lambda environment variable OPENWEATHER_API_KEY must be set.
 
-Cognito hosted UI not implemented in this demo.
+Cognito hosted UI, using classic UI.
 
 Tokens must be manually retrieved using CLI or custom app.
 
